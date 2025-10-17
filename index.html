@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,18 +11,22 @@
             transition: transform 0.2s;
             margin-bottom: 20px;
         }
+
         .burger-card:hover {
             transform: translateY(-5px);
         }
+
         .order-summary {
             position: sticky;
             top: 20px;
         }
+
         .quantity-input {
             width: 60px;
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
@@ -201,7 +206,7 @@
                 });
 
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     // Show success modal
                     const modal = new bootstrap.Modal(document.getElementById('orderModal'));
@@ -230,5 +235,7 @@
         });
     </script>
 </body>
+
 </html>
+
 </html>

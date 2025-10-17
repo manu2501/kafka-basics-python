@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -12,7 +11,7 @@ from datetime import datetime
 app = FastAPI(
     title="Burger Kiosk API",
     description="FastAPI-based burger kiosk with Kafka message queue",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Configure CORS middleware
@@ -21,8 +20,9 @@ app.add_middleware(
     allow_origins=["*"],  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def root():
@@ -31,14 +31,16 @@ async def root():
         "endpoints": {
             "GET /menu": "View all available burgers",
             "GET /menu/{burger_id}": "Get details of a specific burger",
-            "POST /order": "Place a new burger order"
-        }
+            "POST /order": "Place a new burger order",
+        },
     }
+
 
 @app.get("/menu", response_model=List[BurgerMenuItem])
 async def get_menu():
     """Get the full menu of available burgers"""
     return MENU_ITEMS
+
 
 @app.get("/menu/{burger_id}", response_model=BurgerMenuItem)
 async def get_burger(burger_id: int):
@@ -49,10 +51,10 @@ async def get_burger(burger_id: int):
     raise HTTPException(status_code=404, detail="Burger not found")
 
 
-
 class OrderRequest(BaseModel):
     items: List[OrderItem]
     customer_name: str
+
 
 @app.post("/order", response_model=OrderResponse)
 async def place_order(order_req: OrderRequest):
@@ -66,13 +68,11 @@ async def place_order(order_req: OrderRequest):
                 break
         if not burger:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid burger_id: {item.burger_id}"
+                status_code=400, detail=f"Invalid burger_id: {item.burger_id}"
             )
         if not burger.is_available:
             raise HTTPException(
-                status_code=400,
-                detail=f"Burger {burger.name} is currently unavailable"
+                status_code=400, detail=f"Burger {burger.name} is currently unavailable"
             )
         total += burger.price * item.quantity
 
@@ -82,22 +82,20 @@ async def place_order(order_req: OrderRequest):
         customer_name=order_req.customer_name,
         total_amount=total,
         status="pending",
-        created_at=datetime.now()
+        created_at=datetime.now(),
     )
 
     success = await send_order_to_kafka(order)
     if not success:
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to process order"
-        )
+        raise HTTPException(status_code=500, detail="Failed to process order")
 
     return OrderResponse(
         order_id=order.order_id,
         status="accepted",
         estimated_wait_time=15,
-        message="Your order has been accepted and is being processed"
+        message="Your order has been accepted and is being processed",
     )
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

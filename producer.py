@@ -5,6 +5,7 @@ from models import Order
 producer_config = {"bootstrap.servers": "localhost:9092"}
 producer = Producer(producer_config)
 
+
 def delivery_report(err, msg):
     if err is not None:
         print(f"Message delivery failed: {err}")
@@ -14,6 +15,7 @@ def delivery_report(err, msg):
         print(f"Partition: {msg.partition()}, Offset: {msg.offset()}")
         return True
 
+
 async def send_order_to_kafka(order: Order) -> bool:
     try:
         # Convert order to dict and encode as JSON
@@ -22,21 +24,17 @@ async def send_order_to_kafka(order: Order) -> bool:
         order_dict["order_id"] = str(order_dict["order_id"])
         # Convert datetime to ISO format string
         order_dict["created_at"] = order_dict["created_at"].isoformat()
-        
+
         # Encode as JSON bytes
         value = json.dumps(order_dict).encode("utf-8")
-        
+
         # Produce to Kafka
-        producer.produce(
-            "burger-orders",
-            value=value,
-            callback=delivery_report
-        )
-        
+        producer.produce("burger-orders", value=value, callback=delivery_report)
+
         # Wait for message to be delivered
         producer.flush(timeout=5)
         return True
-        
+
     except Exception as e:
         print(f"Failed to send order to Kafka: {e}")
         return False
