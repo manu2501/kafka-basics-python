@@ -1,25 +1,39 @@
-# Kafka Example (Kafka + Python producer/consumer)
+# Burger Kiosk API with FastAPI and Kafka
 
-This small example demonstrates a minimal Kafka producer and consumer implemented in Python using the confluent-kafka client, plus a Docker Compose configuration for running a single-node Kafka broker in KRaft mode.
+A burger kiosk application built with FastAPI for the web API and Apache Kafka for message queuing. This application demonstrates how to build a real-time order processing system using modern Python web frameworks and event streaming.
 
-The repository contains:
+## Features
 
-- `producer.py` — simple producer that sends a single JSON order to the `orders` topic.
-- `tracker.py` — simple consumer that subscribes to the `orders` topic and prints received orders.
-- `main.py` — trivial entrypoint (prints a greeting). Useful for a quick smoke check.
-- `docker-compose.yaml` — starts a single Kafka broker (KRaft mode) exposed on localhost:9092.
-- `pyproject.toml` — project metadata and dependency on `confluent-kafka`.
+- 🍔 Full burger menu with various options (Classic, Cheese, Bacon, Veggie, etc.)
+- 🛍️ Real-time order processing with Kafka
+- 📝 Order tracking and status updates
+- 🔄 Asynchronous message processing
+- 📊 FastAPI automatic OpenAPI documentation
+- 🐳 Docker Compose for easy deployment
+
+## Project Structure
+
+- `main.py` — FastAPI application with endpoints for viewing menu and placing orders
+- `models.py` — Pydantic models for burgers, orders, and API responses
+- `producer.py` — Kafka producer for sending orders to the message queue
+- `tracker.py` — Order tracking consumer that displays incoming orders
+- `docker-compose.yaml` — Kafka broker configuration (KRaft mode)
+- `pyproject.toml` — Project dependencies and metadata
 
 ## Requirements
 
 - Python 3.10 or newer
-- Docker (for running the Kafka broker via Docker Compose)
-- uv (recommended)
-- On Windows, installing `confluent-kafka` may require a compatible wheel or WSL; if you run into build issues, use WSL or run the producer/consumer inside a Linux container.
+- Docker and Docker Compose
+- pip and virtualenv (recommended)
 
-Note: `confluent-kafka` depends on librdkafka. On most platforms `pip install confluent-kafka` will fetch a pre-built wheel. If pip attempts to compile librdkafka and fails, follow platform-specific instructions (or use WSL/Docker).
+Dependencies:
+- FastAPI and Uvicorn for the web API
+- confluent-kafka for Kafka integration
+- Pydantic for data validation
 
-## Quickstart (recommended)
+Note: On Windows, installing `confluent-kafka` may require WSL or Docker if you encounter build issues.
+
+## Quickstart
 
 1. Start Kafka with Docker Compose:
 
@@ -27,39 +41,77 @@ Note: `confluent-kafka` depends on librdkafka. On most platforms `pip install co
 docker-compose up -d
 ```
 
-This uses the `confluentinc/cp-kafka:latest` image and exposes the broker on `localhost:9092`.
-
-2. (Optional) Create a Python virtual environment and install dependencies:
+2. Create a virtual environment and install dependencies:
 
 ```powershell
-uv sync
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e .
 ```
 
-Or install the dependency directly:
+3. Start the FastAPI application:
 
 ```powershell
-uv pip install confluent-kafka
+python main.py
 ```
 
-3. Start the consumer (tracker) in one terminal to listen for orders:
+The API will be available at http://localhost:8000. Visit http://localhost:8000/docs for the interactive API documentation.
+
+4. In another terminal, start the order tracker:
 
 ```powershell
 python tracker.py
 ```
 
-You should see:
+## API Endpoints
 
+### GET /menu
+Get the full menu of available burgers.
+
+Response example:
+```json
+[
+  {
+    "id": 1,
+    "name": "Classic Burger",
+    "description": "A juicy beef patty with lettuce, tomato, and our special sauce",
+    "price": 8.99,
+    "size": "Regular",
+    "is_available": true
+  }
+]
 ```
-Listening for messages on 'orders' topic...
+
+### GET /menu/{burger_id}
+Get details of a specific burger by ID.
+
+### POST /order
+Place a new burger order.
+
+Request body example:
+```json
+{
+  "items": [
+    {
+      "burger_id": 1,
+      "quantity": 2,
+      "special_instructions": "Extra cheese please"
+    }
+  ],
+  "customer_name": "John Doe",
+  "total_amount": 0
+}
 ```
 
-4. Run the producer in another terminal to send one sample order:
-
-```powershell
-python producer.py
+Response example:
+```json
+{
+  "order_id": "uuid-here",
+  "status": "accepted",
+  "estimated_wait_time": 15,
+  "message": "Your order has been accepted and is being processed"
+}
 ```
-
-The producer will attempt to deliver a single JSON message to the `orders` topic. The consumer should print the received order.
 
 ## Configuration
 
