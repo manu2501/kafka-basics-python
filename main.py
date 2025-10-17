@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import uvicorn
 from models import BurgerMenuItem, Order, OrderItem, OrderResponse, MENU_ITEMS
@@ -12,6 +13,15 @@ app = FastAPI(
     title="Burger Kiosk API",
     description="FastAPI-based burger kiosk with Kafka message queue",
     version="1.0.0"
+)
+
+# Configure CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 @app.get("/")
