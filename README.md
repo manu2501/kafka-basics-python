@@ -1,6 +1,6 @@
-# Burger Kiosk API with FastAPI and Kafka
+# Burger Kiosk - Modular Services (FastAPI + Kafka)
 
-A burger kiosk application built with FastAPI for the web API and Apache Kafka for message queuing. This application demonstrates how to build a real-time order processing system using modern Python web frameworks and event streaming.
+This project provides a modular, service-oriented backend with Kafka, plus simple admin and user dashboards.
 
 ## Features
 
@@ -13,12 +13,10 @@ A burger kiosk application built with FastAPI for the web API and Apache Kafka f
 
 ## Project Structure
 
-- `main.py` — FastAPI application with endpoints for viewing menu and placing orders
-- `models.py` — Pydantic models for burgers, orders, and API responses
-- `producer.py` — Kafka producer for sending orders to the message queue
-- `tracker.py` — Order tracking consumer that displays incoming orders
-- `docker-compose.yaml` — Kafka broker configuration (KRaft mode)
-- `pyproject.toml` — Project dependencies and metadata
+- `services/user_service` — user-facing API and static dashboard
+- `services/admin_service` — admin metrics/events API and static dashboard
+- `services/gateway` — simple FastAPI reverse-proxy for both services
+- `docker-compose.services.yaml` — stack with Kafka + services
 
 ## Requirements
 
@@ -35,10 +33,10 @@ Note: On Windows, installing `confluent-kafka` may require WSL or Docker if you 
 
 ## Quickstart
 
-1. Start Kafka with Docker Compose:
+1. Start the modular stack (Kafka + services):
 
-```powershell
-docker-compose up -d
+```bash
+docker compose -f docker-compose.services.yaml up --build
 ```
 
 2. Create a virtual environment and install dependencies:
@@ -49,7 +47,9 @@ python -m venv .venv
 python -m pip install -e .
 ```
 
-3. Start the FastAPI application:
+2. Access via gateway:
+   - User Dashboard: `http://localhost:8080/user/`
+   - Admin Dashboard: `http://localhost:8080/admin/`
 
 ```powershell
 python main.py
@@ -115,8 +115,8 @@ Response example:
 
 ## Configuration
 
-- Broker address: both `producer.py` and `tracker.py` default to `localhost:9092` via the `bootstrap.servers` setting. If your broker runs elsewhere, update `producer_config` and `consumer_config` accordingly.
-- Topic: `orders` (hard-coded in both producer and consumer in this example).
+- Broker address: services use `KAFKA_BOOTSTRAP` env (default `localhost:9092`). In Compose, it's wired to `kafka:9092`.
+- Topic: `burger-orders`.
 
 ## Files overview
 
