@@ -59,5 +59,18 @@ services:
       - user_service
       - admin_service
 
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: web
+    environment:
+      NEXT_PUBLIC_API_BASE: http://gateway:8080
+      JWT_SECRET: dev_secret_change_me
+    ports:
+      - "3000:3000"
+    depends_on:
+      - gateway
+
 volumes:
   kafka_kraft:
