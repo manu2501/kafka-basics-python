@@ -43,7 +43,7 @@ services:
     depends_on:
       - backend
       - frontend
-    entrypoint: ["bash", "-lc", "pip install requests && python /e2e/e2e.py"]
+    entrypoint: ["bash", "-lc", "python /e2e/e2e.py"]
     volumes:
       - ./e2e:/e2e
 

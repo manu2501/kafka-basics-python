@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin - Burger Shop</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>👩‍🍳 Admin Panel</h3>
+      <div>
+        <input id="username" class="form-control form-control-sm d-inline" placeholder="admin" style="max-width: 140px" />
+        <input id="password" type="password" class="form-control form-control-sm d-inline" placeholder="password" style="max-width: 140px" />
+        <button class="btn btn-sm btn-primary" onclick="login()">Login</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <h5>SKUs</h5>
+        <div class="mb-2">
+          <input id="skuName" class="form-control form-control-sm mb-1" placeholder="Name" />
+          <input id="skuPrice" class="form-control form-control-sm mb-1" placeholder="Price" type="number" step="0.01" />
+          <input id="skuDesc" class="form-control form-control-sm mb-1" placeholder="Description" />
+          <button class="btn btn-sm btn-success" onclick="addSKU()">Add SKU</button>
+        </div>
+        <ul class="list-group" id="skuList"></ul>
+      </div>
+      <div class="col-md-6">
+        <h5>Orders</h5>
+        <ul class="list-group" id="orderList"></ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = (path) => `${location.protocol}//${location.hostname}:${location.port || 80}/api${path}`;
+let token = localStorage.getItem('admin_token') || '';
+
+function headers(){ return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type':'application/json'} : {'Content-Type':'application/json'} }
+
+async function login(){
+  const username = document.getElementById('username').value || 'admin';
+  const password = document.getElementById('password').value || 'admin123';
+  const res = await fetch(API('/auth/login'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password})});
+  const data = await res.json();
+  if(!res.ok) return alert(data.detail || 'Login failed');
+  token = data.access_token; localStorage.setItem('admin_token', token); loadSKUs(); loadOrders();
+}
+function logout(){ token=''; localStorage.removeItem('admin_token'); }
+
+async function loadSKUs(){
+  const res = await fetch(API('/admin/skus'), {headers: headers()});
+  const data = await res.json();
+  const list = document.getElementById('skuList'); list.innerHTML='';
+  for(const s of data){
+    const li = document.createElement('li'); li.className='list-group-item';
+    li.innerHTML = `<div class='d-flex justify-content-between align-items-center'><div><strong>${s.name}</strong> - $${s.price.toFixed(2)}<br/><small>${s.description||''}</small></div><div><button class='btn btn-sm btn-outline-primary me-1' onclick='toggleAvailability(${s.id}, ${!s.is_available})'>${s.is_available?'Disable':'Enable'}</button></div></div>`;
+    list.appendChild(li);
+  }
+}
+
+async function addSKU(){
+  const name = document.getElementById('skuName').value.trim();
+  const price = parseFloat(document.getElementById('skuPrice').value);
+  const description = document.getElementById('skuDesc').value.trim();
+  if(!name || !price) return alert('Name and Price required');
+  const res = await fetch(API('/admin/skus'), {method:'POST', headers: headers(), body: JSON.stringify({name, price, description})});
+  if(!res.ok) return alert('Failed to add');
+  document.getElementById('skuName').value=''; document.getElementById('skuPrice').value=''; document.getElementById('skuDesc').value='';
+  loadSKUs();
+}
+
+async function toggleAvailability(id, avail){
+  const res = await fetch(API(`/admin/skus/${id}`), {method:'PUT', headers: headers(), body: JSON.stringify({is_available: avail})});
+  if(!res.ok) return alert('Failed to update');
+  loadSKUs();
+}
+
+async function loadOrders(){
+  const res = await fetch(API('/admin/orders'), {headers: headers()});
+  const data = await res.json();
+  const list = document.getElementById('orderList'); list.innerHTML='';
+  for(const o of data){
+    const li = document.createElement('li'); li.className='list-group-item d-flex justify-content-between align-items-center';
+    li.innerHTML = `<div>${o.id} - $${o.total_amount.toFixed(2)} - <span class='badge bg-secondary'>${o.status}</span></div>
+      <div class='btn-group'>
+        <button class='btn btn-sm btn-outline-primary' onclick='setStatus("${o.id}", "accepted")'>Accept</button>
+        <button class='btn btn-sm btn-outline-warning' onclick='setStatus("${o.id}", "in_progress")'>In Progress</button>
+        <button class='btn btn-sm btn-outline-success' onclick='setStatus("${o.id}", "completed")'>Complete</button>
+      </div>`;
+    list.appendChild(li);
+  }
+}
+
+async function setStatus(id, status){
+  const res = await fetch(API(`/admin/orders/${id}`), {method:'PUT', headers: headers(), body: JSON.stringify({status})});
+  if(!res.ok) return alert('Failed to update');
+  loadOrders();
+}
+
+loadSKUs(); loadOrders();
+</script>
+</body>
+</html>

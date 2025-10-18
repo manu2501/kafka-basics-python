@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Burger Shop</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>🍔 Burger Shop</h3>
+      <div id="authBox" class="d-flex gap-2">
+        <input id="username" class="form-control form-control-sm" placeholder="username" style="max-width: 140px" />
+        <input id="password" type="password" class="form-control form-control-sm" placeholder="password" style="max-width: 140px" />
+        <button class="btn btn-sm btn-outline-primary" onclick="register()">Register</button>
+        <button class="btn btn-sm btn-primary" onclick="login()">Login</button>
+      </div>
+      <div id="userBox" class="d-none">
+        <span class="me-2" id="userWelcome"></span>
+        <button class="btn btn-sm btn-outline-danger" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-8">
+        <h5>Menu</h5>
+        <div class="row" id="menu"></div>
+      </div>
+      <div class="col-md-4">
+        <h5>Your Order</h5>
+        <ul class="list-group mb-3" id="orderList"></ul>
+        <div class="d-flex justify-content-between">
+          <strong>Total</strong>
+          <strong id="total">$0.00</strong>
+        </div>
+        <button class="btn btn-success w-100 mt-2" onclick="placeOrder()">Place Order</button>
+        <hr/>
+        <h6>My Orders</h6>
+        <ul class="list-group" id="myOrders"></ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = (path) => `${location.protocol}//${location.hostname}:${location.port || 80}/api${path}`;
+let token = localStorage.getItem('token') || '';
+let usernameCache = localStorage.getItem('username') || '';
+const headers = () => token ? { 'Authorization': `Bearer ${token}` } : {};
+let es = null;
+
+function connectSSE(){
+  if(es){ try{ es.close(); }catch(_){} es = null; }
+  if(!token) return;
+  const url = API('/notify/me') + `?token=${encodeURIComponent(token)}`;
+  es = new EventSource(url);
+  es.onmessage = (evt) => {
+    try {
+      const data = JSON.parse(evt.data);
+      if(data.type === 'order_completed'){
+        alert(`Order completed: ${data.order_id}`);
+        loadMyOrders();
+      }
+    } catch(e) {}
+  };
+}
+
+function setAuthUI() {
+  document.getElementById('authBox').classList.toggle('d-none', !!token);
+  document.getElementById('userBox').classList.toggle('d-none', !token);
+  document.getElementById('userWelcome').textContent = token ? `Logged in as ${usernameCache}` : '';
+  connectSSE();
+}
+
+async function register(){
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  if(!username || !password) return alert('Provide username and password');
+  const res = await fetch(API('/auth/register'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password})});
+  if(!res.ok) return alert('Registration failed');
+  alert('Registered. Now login.');
+}
+
+async function login(){
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const res = await fetch(API('/auth/login'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password})});
+  const data = await res.json();
+  if(!res.ok) return alert(data.detail || 'Login failed');
+  token = data.access_token; localStorage.setItem('token', token); localStorage.setItem('username', username); usernameCache = username; setAuthUI(); loadMenu(); loadMyOrders();
+}
+
+function logout(){ token=''; localStorage.removeItem('token'); setAuthUI(); }
+
+let cart = new Map();
+function addToCart(sku){
+  const qty = cart.get(sku.id) || 0; cart.set(sku.id, qty + 1); renderCart(); }
+function removeFromCart(id){ cart.delete(id); renderCart(); }
+
+function renderCart(){
+  const list = document.getElementById('orderList');
+  let sum = 0; list.innerHTML = '';
+  for(const [id, qty] of cart.entries()){
+    const item = menuCache.find(x=>x.id===id);
+    const subtotal = item.price * qty; sum += subtotal;
+    const li = document.createElement('li'); li.className='list-group-item d-flex justify-content-between align-items-center';
+    li.innerHTML = `${item.name} x ${qty} <div><span class='me-3'>$${subtotal.toFixed(2)}</span><button class='btn btn-sm btn-outline-danger' onclick='removeFromCart(${id})'>&times;</button></div>`;
+    list.appendChild(li);
+  }
+  document.getElementById('total').textContent = `$${sum.toFixed(2)}`;
+}
+
+let menuCache = [];
+async function loadMenu(){
+  const res = await fetch(API('/user/menu'));
+  menuCache = await res.json();
+  const grid = document.getElementById('menu'); grid.innerHTML = '';
+  for(const sku of menuCache){
+    const col = document.createElement('div'); col.className = 'col-md-6';
+    col.innerHTML = `<div class='card mb-3'><div class='card-body'><h5>${sku.name}</h5><p>${sku.description||''}</p><div class='d-flex justify-content-between align-items-center'><strong>$${sku.price.toFixed(2)}</strong><button class='btn btn-sm btn-primary'>Add</button></div></div></div>`;
+    col.querySelector('button').onclick = () => addToCart(sku);
+    grid.appendChild(col);
+  }
+}
+
+async function placeOrder(){
+  if(!token) return alert('Login first');
+  const items = Array.from(cart.entries()).map(([sku_id, quantity])=>({sku_id, quantity}));
+  if(!items.length) return alert('Cart empty');
+  const res = await fetch(API('/user/order'), {method:'POST', headers:{...headers(), 'Content-Type':'application/json'}, body: JSON.stringify({items})});
+  const data = await res.json();
+  if(!res.ok) return alert(data.detail||'Order failed');
+  alert(`Order placed: ${data.id}`); cart.clear(); renderCart(); loadMyOrders();
+}
+
+async function loadMyOrders(){
+  if(!token) return;
+  const res = await fetch(API('/user/orders'), {headers: headers()});
+  const data = await res.json();
+  const list = document.getElementById('myOrders'); list.innerHTML = '';
+  for(const o of data){
+    const li = document.createElement('li'); li.className='list-group-item d-flex justify-content-between';
+    li.textContent = `${o.id} - ${o.status} - $${o.total_amount.toFixed(2)}`;
+    list.appendChild(li);
+  }
+}
+
+setAuthUI(); loadMenu(); loadMyOrders();
+</script>
+</body>
+</html>

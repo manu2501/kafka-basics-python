@@ -1,1 +1,0 @@
-# Shared package for models and utilities

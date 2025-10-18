@@ -1,0 +1,6 @@
+fastapi[standard]>=0.119.0
+uvicorn[standard]>=0.37.0
+SQLAlchemy>=2.0.36
+psycopg2-binary>=2.9.9
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
